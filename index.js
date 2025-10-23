@@ -23,6 +23,26 @@ const commands = [
     new SlashCommandBuilder().setName('ruleta').setDescription('🎰 Ruleta rusa'),
     new SlashCommandBuilder().setName('memoria').setDescription('🧠 Juego de memoria')
 ].map(command => command.toJSON());
+// Añade esto a tu bot para ver comandos
+client.on('messageCreate', async message => {
+    if (message.content === '!comandos') {
+        const embed = new EmbedBuilder()
+            .setTitle('🎮 COMANDOS DEL BOT')
+            .setDescription(`
+            **SLASH COMMANDS (Usa / )**
+            \`/carrera\` - 🎪 Carrera tipo Fall Guys
+            \`/impostor\` - 🕵️ Juego del impostor  
+            \`/dibuja\` - 🎨 Dibuja y adivina
+            \`/party\` - 🎪 Juego aleatorio
+            \`/trivia\` - 🧠 Trivia con botones
+            \`/ruleta\` - 🎰 Ruleta rusa
+            \`/memoria\` - 🧠 Juego de memoria
+            `)
+            .setColor(0x9B59B6);
+        
+        await message.reply({ embeds: [embed] });
+    }
+});
 
 const rest = new REST({ version: '10' }).setToken(config.token);
 
