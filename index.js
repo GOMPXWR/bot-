@@ -1,4 +1,4 @@
-const { Client, GatewayIntentBits, SlashCommandBuilder, REST, Routes, ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, StringSelectMenuBuilder } = require('discord.js');
+const { Client, GatewayIntentBits, SlashCommandBuilder, REST, Routes, ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, StringSelectMenuBuilder, Events } = require('discord.js');
 
 const config = {
     token: process.env.TOKEN,
@@ -31,7 +31,8 @@ const commands = [
     new SlashCommandBuilder().setName('leaderboard').setDescription('🏆 Tabla de clasificación'),
     new SlashCommandBuilder().setName('slot').setDescription('🎰 Máquina tragamonedas'),
     new SlashCommandBuilder().setName('battle').setDescription('⚔️ Batalla por turnos 1vs1'),
-    new SlashCommandBuilder().setName('solo').setDescription('🎮 Juegos para un solo jugador')
+    new SlashCommandBuilder().setName('solo').setDescription('🎮 Juegos para un solo jugador'),
+    new SlashCommandBuilder().setName('version').setDescription('ℹ️ Ver información del bot')
 ].map(command => command.toJSON());
 
 const rest = new REST({ version: '10' }).setToken(config.token);
@@ -63,11 +64,11 @@ function updateStats(userId, win = false, coins = 0) {
     userStats.set(userId, stats);
 }
 
-client.once('ready', () => {
+client.on(Events.ClientReady, () => {
     console.log(`🎮 ${client.user.tag} mejorado y listo!`);
 });
 
-client.on('interactionCreate', async interaction => {
+client.on(Events.InteractionCreate, async interaction => {
     if (!interaction.isChatInputCommand()) return;
 
     const { commandName, user } = interaction;
@@ -82,7 +83,6 @@ client.on('interactionCreate', async interaction => {
                 { name: '⏱️ Tiempo', value: '20 segundos', inline: true }
             )
             .setColor(0x00FF00)
-            .setImage('https://cdn.discordapp.com/attachments/1060005005000000000/1060005005000000000/race_banner.png')
             .setFooter({ text: 'Reacciona con 🏃 para unirte!' });
 
         const joinButton = new ActionRowBuilder().addComponents(
@@ -112,13 +112,11 @@ client.on('interactionCreate', async interaction => {
             .setTitle('🎪 BEST PARTY HUB')
             .setDescription('**Selecciona un juego de la lista** ⬇️')
             .setColor(0x9B59B6)
-            .setThumbnail('https://cdn.discordapp.com/emojis/1060005005000000000.png')
             .addFields(
                 { name: '🎯 Juegos Activos', value: '`6` disponibles', inline: true },
                 { name: '👥 Jugadores Online', value: '`12` en línea', inline: true },
                 { name: '🏆 Evento Actual', value: 'Torneo Semanal', inline: true }
-            )
-            .setImage('https://cdn.discordapp.com/attachments/1060005005000000000/1060005005000000000/party_banner.png');
+            );
 
         await interaction.reply({ embeds: [embed], components: [selectMenu] });
     }
@@ -142,18 +140,6 @@ client.on('interactionCreate', async interaction => {
                 respuesta: "Oro", 
                 opciones: ["Plata", "Oro", "Aluminio", "Argón"],
                 explicacion: "Au viene del latín 'Aurum' que significa oro"
-            },
-            { 
-                pregunta: "¿En qué continente está Egipto?", 
-                respuesta: "África", 
-                opciones: ["África", "Asia", "Europa", "América"],
-                explicacion: "Egipto está ubicado en el noreste de África"
-            },
-            { 
-                pregunta: "¿Cuántos lados tiene un hexágono?", 
-                respuesta: "6", 
-                opciones: ["5", "6", "7", "8"],
-                explicacion: "Hexágono viene del griego 'hex' (seis) y 'gonia' (ángulo)"
             }
         ];
         
@@ -186,8 +172,7 @@ client.on('interactionCreate', async interaction => {
                 const winEmbed = new EmbedBuilder()
                     .setTitle('🎉 ¡CORRECTO!')
                     .setDescription(`**${pregunta.respuesta}** ✅\n\n*${pregunta.explicacion}*`)
-                    .setColor(0x00FF00)
-                    .setFooter({ text: `Respondido por: ${i.user.username}` });
+                    .setColor(0x00FF00);
                 
                 await i.reply({ embeds: [winEmbed] });
                 collector.stop();
@@ -201,12 +186,7 @@ client.on('interactionCreate', async interaction => {
 
         collector.on('end', async collected => {
             if (collected.size === 0) {
-                const timeoutEmbed = new EmbedBuilder()
-                    .setTitle('⏰ TIEMPO AGOTADO')
-                    .setDescription(`La respuesta era: **${pregunta.respuesta}**\n\n*${pregunta.explicacion}*`)
-                    .setColor(0xFFA500);
-                
-                await interaction.followUp({ embeds: [timeoutEmbed] });
+                await interaction.followUp(`⏰ **TIEMPO AGOTADO!** La respuesta era: ${pregunta.respuesta}`);
             }
         });
     }
@@ -218,10 +198,7 @@ client.on('interactionCreate', async interaction => {
                 .setPlaceholder('🎮 Elige un juego individual')
                 .addOptions([
                     { label: 'Adivina el Número', description: '🎯 Clásico juego de adivinanza', value: 'adivina', emoji: '🔢' },
-                    { label: 'Piedra Papel Tijera', description: '✂️ Contra la máquina', value: 'ppt', emoji: '🪨' },
-                    { label: 'Blackjack', description: '🎰 Juega contra el dealer', value: 'blackjack', emoji: '🃏' },
-                    { label: 'Quiz Diario', description: '🧠 Desafío único del día', value: 'quiz', emoji: '📝' },
-                    { label: 'Simón Dice', description: '🎵 Juego de memoria', value: 'simon', emoji: '🎵' }
+                    { label: 'Piedra Papel Tijera', description: '✂️ Contra la máquina', value: 'ppt', emoji: '🪨' }
                 ])
         );
 
@@ -231,10 +208,8 @@ client.on('interactionCreate', async interaction => {
             .setColor(0x7289DA)
             .addFields(
                 { name: '👤 Jugador', value: `${interaction.user.username}`, inline: true },
-                { name: '🏆 Puntos', value: '**0**', inline: true },
                 { name: '🎯 Record', value: '**0** victorias', inline: true }
             )
-            .setImage('https://cdn.discordapp.com/attachments/1060005005000000000/1060005005000000000/solo_banner.png')
             .setFooter({ text: '¡Perfecto para cuando juegas solo!' });
 
         await interaction.reply({ embeds: [embed], components: [gamesMenu] });
@@ -253,11 +228,8 @@ client.on('interactionCreate', async interaction => {
                 { name: '🪙 Monedas', value: `**${coins}**`, inline: true },
                 { name: '🏆 Victorias', value: `**${stats.wins}**`, inline: true },
                 { name: '📊 Win Rate', value: `**${winRate}%**`, inline: true },
-                { name: '🎮 Partidas', value: `**${stats.games}** jugadas`, inline: true },
-                { name: '💰 Ganado Total', value: `**${stats.coinsWon}** 🪙`, inline: true },
-                { name: '📅 Miembro desde', value: `<t:${Math.floor(user.createdTimestamp / 1000)}:R>`, inline: true }
+                { name: '🎮 Partidas', value: `**${stats.games}** jugadas`, inline: true }
             )
-            .setImage('https://cdn.discordapp.com/attachments/1060005005000000000/1060005005000000000/profile_banner.png')
             .setFooter({ text: 'Sigue jugando para mejorar tus stats!' })
             .setTimestamp();
 
@@ -268,19 +240,17 @@ client.on('interactionCreate', async interaction => {
         const topPlayers = Array.from(userStats.entries())
             .map(([id, stats]) => ({ id, ...stats, coins: userCoins.get(id) || 0 }))
             .sort((a, b) => b.coins - a.coins)
-            .slice(0, 10);
+            .slice(0, 5);
 
         const leaderboardText = topPlayers.map((player, index) => {
             const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : '🔸';
-            return `${medal} **${index + 1}.** <@${player.id}> - **${player.coins}** 🪙 (${player.wins}🏆)`;
+            return `${medal} **${index + 1}.** <@${player.id}> - **${player.coins}** 🪙`;
         }).join('\n') || '📝 Nadie ha jugado aún...';
 
         const embed = new EmbedBuilder()
             .setTitle('🏆 LEADERBOARD GLOBAL')
             .setDescription(leaderboardText)
             .setColor(0xFFD700)
-            .setThumbnail('https://cdn.discordapp.com/emojis/1060005005000000000.png')
-            .setImage('https://cdn.discordapp.com/attachments/1060005005000000000/1060005005000000000/leaderboard_banner.png')
             .setFooter({ text: 'Actualizado en tiempo real' })
             .setTimestamp();
 
@@ -324,49 +294,68 @@ client.on('interactionCreate', async interaction => {
                 { name: '💰 Premio', value: winMultiplier > 0 ? `**+${winAmount}** 🪙` : '**0** 🪙', inline: true },
                 { name: '💳 Saldo', value: `**${getCoins(user.id)}** 🪙`, inline: true }
             )
-            .setImage('https://cdn.discordapp.com/attachments/1060005005000000000/1060005005000000000/slot_banner.png')
             .setFooter({ text: `Apuesta: ${bet} 🪙` });
-
-        const spinAgain = new ActionRowBuilder().addComponents(
-            new ButtonBuilder().setCustomId('spin_again').setLabel('🎰 Girar Otra Vez (50🪙)').setStyle(ButtonStyle.Primary)
-        );
-
-        await interaction.reply({ embeds: [embed], components: winMultiplier > 0 ? [spinAgain] : [] });
-    }
-
-    else if (commandName === 'battle') {
-        const embed = new EmbedBuilder()
-            .setTitle('⚔️ BATALLA EPICA')
-            .setDescription('**Reta a un amigo a un duelo!**\nMenciona a tu oponente:')
-            .setColor(0xFF0000)
-            .setImage('https://cdn.discordapp.com/attachments/1060005005000000000/1060005005000000000/battle_banner.png');
 
         await interaction.reply({ embeds: [embed] });
     }
 
-    // Mantener otros comandos existentes...
+    else if (commandName === 'version') {
+        const embed = new EmbedBuilder()
+            .setTitle('ℹ️ INFORMACIÓN DEL BOT')
+            .setColor(0x00FF00)
+            .addFields(
+                { name: '🔄 Versión', value: '**1.0.0**', inline: true },
+                { name: '📅 Actualizado', value: `<t:${Math.floor(Date.now() / 1000)}:R>`, inline: true },
+                { name: '✅ Estado', value: '**En funcionamiento**', inline: true }
+            )
+            .setFooter({ text: 'Bot activo y funcionando' })
+            .setTimestamp();
+
+        await interaction.reply({ embeds: [embed] });
+    }
+
     else if (commandName === 'impostor') {
-        // Tu código existente de impostor...
+        const embed = new EmbedBuilder()
+            .setTitle('🕵️ JUEGO DEL IMPOSTOR')
+            .setDescription('Reacciona con ✅ para unirte al juego')
+            .setColor(0xFF0000)
+            .setFooter({ text: '20 segundos para unirse' });
+
+        await interaction.reply({ embeds: [embed] });
+        const message = await interaction.fetchReply();
+        await message.react('✅');
     }
+
     else if (commandName === 'dibuja') {
-        // Tu código existente de dibuja...
+        const palabras = ['🐉 dragón', '🍦 helado', '📞 teléfono', '🚲 bicicleta', '🔥 fuego'];
+        const palabra = palabras[Math.floor(Math.random() * palabras.length)];
+        
+        try {
+            await interaction.user.send(`🎨 **Tu palabra a dibujar es:** ||${palabra}||\n\nDescríbela con emojis o texto en el canal!`);
+            await interaction.reply(`✅ **${interaction.user.username}** está dibujando algo... ¡Adivinen qué es! 🎨`);
+        } catch (error) {
+            await interaction.reply('❌ No puedo enviarte MD! Activa tus mensajes directos.');
+        }
     }
+
     else if (commandName === 'ruleta') {
-        // Tu código existente de ruleta...
+        await interaction.reply('🎰 **Ruleta Rusa** - ¡Juego en desarrollo! Próximamente...');
     }
+
     else if (commandName === 'memoria') {
-        // Tu código existente de memoria...
+        await interaction.reply('🧠 **Juego de Memoria** - ¡En desarrollo! Próximamente...');
+    }
+
+    else if (commandName === 'battle') {
+        await interaction.reply('⚔️ **Batalla** - ¡En desarrollo! Próximamente...');
     }
 });
 
 // Manejar interacciones de botones y menús
-client.on('interactionCreate', async interaction => {
+client.on(Events.InteractionCreate, async interaction => {
     if (interaction.isButton()) {
         if (interaction.customId === 'join_race') {
             await interaction.reply({ content: '🎯 Te has unido a la carrera!', ephemeral: true });
-        }
-        else if (interaction.customId === 'spin_again') {
-            await interaction.reply({ content: '🎰 Girando otra vez...', ephemeral: true });
         }
         else if (['piedra', 'papel', 'tijera'].includes(interaction.customId)) {
             const userChoice = interaction.customId;
@@ -386,7 +375,6 @@ client.on('interactionCreate', async interaction => {
             ) {
                 resultado = '**¡GANASTE!** 🎉';
                 color = 0x00FF00;
-                // Premio por ganar
                 const coins = getCoins(interaction.user.id);
                 userCoins.set(interaction.user.id, coins + 25);
                 updateStats(interaction.user.id, true, 25);
@@ -402,10 +390,8 @@ client.on('interactionCreate', async interaction => {
                 .addFields(
                     { name: '👤 Tu elección', value: `**${userChoice.toUpperCase()}**`, inline: true },
                     { name: '🤖 Mi elección', value: `**${botChoice.toUpperCase()}**`, inline: true },
-                    { name: '🎮 Resultado', value: resultado, inline: true },
                     { name: '💰 Premio', value: color === 0x00FF00 ? '+25 🪙' : '0 🪙', inline: true }
-                )
-                .setFooter({ text: color === 0x00FF00 ? '¡Monedas añadidas a tu cuenta!' : 'Suerte para la próxima' });
+                );
 
             await interaction.reply({ embeds: [embed] });
         }
@@ -429,10 +415,8 @@ client.on('interactionCreate', async interaction => {
                     .setColor(0x9B59B6)
                     .addFields(
                         { name: '🎯 Intentos', value: '`0/8`', inline: true },
-                        { name: '📊 Rango', value: '`1 - 100`', inline: true },
                         { name: '💰 Premio', value: '`50` 🪙', inline: true }
                     )
-                    .setImage('https://cdn.discordapp.com/attachments/1060005005000000000/1060005005000000000/guess_banner.png')
                     .setFooter({ text: 'Escribe tu número en el chat' });
 
                 await interaction.reply({ embeds: [embed] });
@@ -459,10 +443,8 @@ client.on('interactionCreate', async interaction => {
                             .setDescription(`**¡Correcto! Era ${numero}**\n\nLo adivinaste en **${intentos}** intentos`)
                             .setColor(0x00FF00)
                             .addFields(
-                                { name: '💰 Premio', value: '+50 🪙', inline: true },
-                                { name: '💳 Saldo Actual', value: `${getCoins(interaction.user.id)} 🪙`, inline: true }
-                            )
-                            .setFooter({ text: '¡Monedas añadidas a tu cuenta!' });
+                                { name: '💰 Premio', value: '+50 🪙', inline: true }
+                            );
                         
                         await interaction.followUp({ embeds: [winEmbed] });
                         collector.stop();
@@ -494,7 +476,6 @@ client.on('interactionCreate', async interaction => {
                     .setTitle('🪨 PIEDRA, PAPEL O TIJERA')
                     .setDescription('**Elige tu movimiento:**')
                     .setColor(0xFFA500)
-                    .setImage('https://cdn.discordapp.com/attachments/1060005005000000000/1060005005000000000/ppt_banner.png')
                     .setFooter({ text: '¡Gana 25 🪙 por cada victoria!' });
 
                 await interaction.reply({ embeds: [embed], components: [row] });
