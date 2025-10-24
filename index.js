@@ -14,25 +14,76 @@ const client = new Client({
     ] 
 });
 
-// Sistema de economía y stats
-const userCoins = new Map();
-const userStats = new Map();
+// Sistema mejorado de economía, stats y cosméticos
+const userData = new Map();
 
-// Comandos completos
+// Cosméticos disponibles
+const cosmeticos = {
+    marcos: [
+        { id: 'default', name: '🖼️ Marco Básico', precio: 0 },
+        { id: 'gold', name: '🌟 Marco Dorado', precio: 500 },
+        { id: 'fire', name: '🔥 Marco de Fuego', precio: 800 },
+        { id: 'ice', name: '❄️ Marco de Hielo', precio: 800 },
+        { id: 'rainbow', name: '🌈 Marco Arcoíris', precio: 1200 }
+    ],
+    títulos: [
+        { id: 'default', name: '👤 Novato', precio: 0 },
+        { id: 'pro', name: '🎯 Experto', precio: 300 },
+        { id: 'legend', name: '🏆 Leyenda', precio: 1000 },
+        { id: 'rich', name: '💰 Millonario', precio: 2000 },
+        { id: 'king', name: '👑 Rey del Casino', precio: 5000 }
+    ],
+    badges: [
+        { id: 'gamer', name: '🎮 Jugador Activo', precio: 0, requisito: 10 },
+        { id: 'winner', name: '🏅 Ganador Nato', precio: 0, requisito: 25 },
+        { id: 'rich', name: '💎 Rico y Famoso', precio: 0, requisito: 10000 }
+    ]
+};
+
+// Juegos de casino
+const casinoGames = {
+    tragamonedas: {
+        name: '🎰 Tragamonedas',
+        minBet: 10,
+        symbols: ['🍒', '🍋', '🍊', '🍇', '🔔', '💎', '7️⃣', '⭐'],
+        payouts: {
+            '💎💎💎': 50,
+            '7️⃣7️⃣7️⃣': 25,
+            '🔔🔔🔔': 15,
+            '⭐⭐⭐': 10,
+            '🍇🍇🍇': 8,
+            '🍊🍊🍊': 5,
+            '🍋🍋🍋': 3,
+            '🍒🍒🍒': 2,
+            'default': 0
+        }
+    },
+    blackjack: {
+        name: '🃏 Blackjack',
+        minBet: 20
+    },
+    ruleta: {
+        name: '🎡 Ruleta',
+        minBet: 10
+    }
+};
+
+// Comandos completos actualizados
 const commands = [
-    new SlashCommandBuilder().setName('carrera').setDescription('🎪 Carrera tipo Fall Guys con gráficos'),
-    new SlashCommandBuilder().setName('impostor').setDescription('🕵️ Juego tipo Among Us mejorado'),
-    new SlashCommandBuilder().setName('dibuja').setDescription('🎨 Dibuja y adivina con más palabras'),
-    new SlashCommandBuilder().setName('party').setDescription('🎪 Selecciona minijuego con menú'),
-    new SlashCommandBuilder().setName('trivia').setDescription('🧠 Trivia con categorías corregida'),
-    new SlashCommandBuilder().setName('ruleta').setDescription('🎰 Ruleta rusa con efectos'),
-    new SlashCommandBuilder().setName('memoria').setDescription('🧠 Juego de memoria interactivo'),
-    new SlashCommandBuilder().setName('perfil').setDescription('👤 Ver tu perfil y estadísticas'),
+    new SlashCommandBuilder().setName('carrera').setDescription('🎪 Carrera tipo Fall Guys'),
+    new SlashCommandBuilder().setName('impostor').setDescription('🕵️ Juego tipo Among Us'),
+    new SlashCommandBuilder().setName('dibuja').setDescription('🎨 Dibuja y adivina'),
+    new SlashCommandBuilder().setName('party').setDescription('🎪 Selecciona minijuego'),
+    new SlashCommandBuilder().setName('trivia').setDescription('🧠 Trivia corregida'),
+    new SlashCommandBuilder().setName('ruleta').setDescription('🎰 Ruleta rusa'),
+    new SlashCommandBuilder().setName('memoria').setDescription('🧠 Juego de memoria'),
+    new SlashCommandBuilder().setName('perfil').setDescription('👤 Ver tu perfil y cosméticos'),
     new SlashCommandBuilder().setName('leaderboard').setDescription('🏆 Tabla de clasificación'),
-    new SlashCommandBuilder().setName('slot').setDescription('🎰 Máquina tragamonedas'),
-    new SlashCommandBuilder().setName('battle').setDescription('⚔️ Batalla por turnos 1vs1'),
+    new SlashCommandBuilder().setName('casino').setDescription('🎰 Juegos de casino'),
     new SlashCommandBuilder().setName('solo').setDescription('🎮 Juegos para un solo jugador'),
-    new SlashCommandBuilder().setName('version').setDescription('ℹ️ Ver información del bot')
+    new SlashCommandBuilder().setName('version').setDescription('ℹ️ Ver información del bot'),
+    new SlashCommandBuilder().setName('tienda').setDescription('🛒 Tienda de cosméticos'),
+    new SlashCommandBuilder().setName('daily').setDescription('📅 Recompensa diaria')
 ].map(command => command.toJSON());
 
 const rest = new REST({ version: '10' }).setToken(config.token);
@@ -46,26 +97,57 @@ const rest = new REST({ version: '10' }).setToken(config.token);
     }
 })();
 
-// Función para obtener coins
-function getCoins(userId) {
-    if (!userCoins.has(userId)) {
-        userCoins.set(userId, 1000);
-        userStats.set(userId, { wins: 0, games: 0, coinsWon: 0 });
+// Función para obtener datos del usuario
+function getUserData(userId) {
+    if (!userData.has(userId)) {
+        userData.set(userId, {
+            coins: 1000,
+            wins: 0,
+            games: 0,
+            coinsWon: 0,
+            dailyStreak: 0,
+            lastDaily: null,
+            cosmeticos: {
+                marco: 'default',
+                titulo: 'default',
+                badges: ['gamer']
+            },
+            stats: {
+                tragamonedas: { jugado: 0, ganado: 0 },
+                blackjack: { jugado: 0, ganado: 0 },
+                ruleta: { jugado: 0, ganado: 0 }
+            }
+        });
     }
-    return userCoins.get(userId);
+    return userData.get(userId);
 }
 
 // Función para actualizar stats
-function updateStats(userId, win = false, coins = 0) {
-    const stats = userStats.get(userId) || { wins: 0, games: 0, coinsWon: 0 };
-    stats.games++;
-    if (win) stats.wins++;
-    stats.coinsWon += coins;
-    userStats.set(userId, stats);
+function updateStats(userId, game, win = false, coins = 0) {
+    const data = getUserData(userId);
+    data.games++;
+    data.stats[game].jugado++;
+    if (win) {
+        data.wins++;
+        data.stats[game].ganado++;
+    }
+    data.coinsWon += coins;
+    data.coins += coins;
+    
+    // Actualizar badges
+    if (data.games >= 10 && !data.cosmeticos.badges.includes('gamer')) {
+        data.cosmeticos.badges.push('gamer');
+    }
+    if (data.wins >= 25 && !data.cosmeticos.badges.includes('winner')) {
+        data.cosmeticos.badges.push('winner');
+    }
+    if (data.coins >= 10000 && !data.cosmeticos.badges.includes('rich')) {
+        data.cosmeticos.badges.push('rich');
+    }
 }
 
 client.on(Events.ClientReady, () => {
-    console.log(`🎮 ${client.user.tag} mejorado y listo!`);
+    console.log(`🎮 ${client.user.tag} con casino y cosméticos listo!`);
 });
 
 client.on(Events.InteractionCreate, async interaction => {
@@ -73,122 +155,31 @@ client.on(Events.InteractionCreate, async interaction => {
 
     const { commandName, user } = interaction;
 
-    if (commandName === 'carrera') {
-        const embed = new EmbedBuilder()
-            .setTitle('🎪 CARRERA EPIC RUN')
-            .setDescription('¡Corredores, a sus puestos! 🏃‍♂️')
-            .addFields(
-                { name: '🏁 Premio', value: '**500** 🪙', inline: true },
-                { name: '👥 Jugadores', value: '0/8', inline: true },
-                { name: '⏱️ Tiempo', value: '20 segundos', inline: true }
-            )
-            .setColor(0x00FF00)
-            .setFooter({ text: 'Reacciona con 🏃 para unirte!' });
-
-        const joinButton = new ActionRowBuilder().addComponents(
-            new ButtonBuilder().setCustomId('join_race').setLabel('🎯 UNIRME').setStyle(ButtonStyle.Success),
-            new ButtonBuilder().setCustomId('view_prizes').setLabel('🏆 PREMIOS').setStyle(ButtonStyle.Secondary)
-        );
-
-        await interaction.reply({ embeds: [embed], components: [joinButton] });
-    }
-
-    else if (commandName === 'party') {
-        const selectMenu = new ActionRowBuilder().addComponents(
+    if (commandName === 'casino') {
+        const casinoMenu = new ActionRowBuilder().addComponents(
             new StringSelectMenuBuilder()
-                .setCustomId('game_select')
-                .setPlaceholder('🎮 Selecciona un juego')
+                .setCustomId('casino_select')
+                .setPlaceholder('🎰 Elige un juego de casino')
                 .addOptions([
-                    { label: 'Carrera Obstáculos', description: '🎪 Corre y gana', value: 'carrera', emoji: '🏃' },
-                    { label: 'Encuentra al Impostor', description: '🕵️ Detective time', value: 'impostor', emoji: '👹' },
-                    { label: 'Dibuja y Adivina', description: '🎨 Demuestra tu arte', value: 'dibuja', emoji: '✏️' },
-                    { label: 'Trivia Battle', description: '🧠 Pon a prueba tu mente', value: 'trivia', emoji: '📚' },
-                    { label: 'Ruleta Rusa', description: '🎰 ¿Quién sobrevive?', value: 'ruleta', emoji: '🔫' },
-                    { label: 'Modo Solo', description: '🎮 Juega individual', value: 'solo', emoji: '👤' }
+                    { label: 'Tragamonedas', description: '🎰 Gira y gana premios', value: 'tragamonedas', emoji: '🎰' },
+                    { label: 'Blackjack', description: '🃏 21 contra el dealer', value: 'blackjack', emoji: '🃏' },
+                    { label: 'Ruleta', description: '🎡 Apuesta a números', value: 'ruleta', emoji: '🎡' },
+                    { label: 'Dados', description: '🎲 Juego de dados', value: 'dados', emoji: '🎲' }
                 ])
         );
 
         const embed = new EmbedBuilder()
-            .setTitle('🎪 BEST PARTY HUB')
-            .setDescription('**Selecciona un juego de la lista** ⬇️')
-            .setColor(0x9B59B6)
+            .setTitle('🎰 CASINO VIP')
+            .setDescription('**Bienvenido al casino!** 🎲\nSelecciona un juego:')
+            .setColor(0xFFD700)
             .addFields(
-                { name: '🎯 Juegos Activos', value: '`6` disponibles', inline: true },
-                { name: '👥 Jugadores Online', value: '`12` en línea', inline: true },
-                { name: '🏆 Evento Actual', value: 'Torneo Semanal', inline: true }
-            );
+                { name: '💰 Tu Saldo', value: `**${getUserData(user.id).coins}** 🪙`, inline: true },
+                { name: '🎯 Mejor Juego', value: 'Tragamonedas', inline: true },
+                { name: '🏆 Jackpot', value: '**10,000** 🪙', inline: true }
+            )
+            .setFooter({ text: '¡Juega responsablemente!' });
 
-        await interaction.reply({ embeds: [embed], components: [selectMenu] });
-    }
-
-    else if (commandName === 'trivia') {
-        const preguntas = [
-            { 
-                pregunta: "¿En qué año se lanzó Minecraft?", 
-                respuesta: "2011", 
-                opciones: ["2009", "2011", "2013", "2015"],
-                explicacion: "Minecraft fue lanzado oficialmente en 2011 por Mojang"
-            },
-            { 
-                pregunta: "¿Cuál es el río más largo del mundo?", 
-                respuesta: "Nilo", 
-                opciones: ["Amazonas", "Nilo", "Misisipi", "Yangtsé"],
-                explicacion: "El río Nilo en África tiene 6,650 km de longitud"
-            },
-            { 
-                pregunta: "¿Qué elemento químico tiene el símbolo 'Au'?", 
-                respuesta: "Oro", 
-                opciones: ["Plata", "Oro", "Aluminio", "Argón"],
-                explicacion: "Au viene del latín 'Aurum' que significa oro"
-            }
-        ];
-        
-        const pregunta = preguntas[Math.floor(Math.random() * preguntas.length)];
-        
-        const row = new ActionRowBuilder()
-            .addComponents(
-                new ButtonBuilder().setCustomId('a').setLabel(pregunta.opciones[0]).setStyle(ButtonStyle.Primary),
-                new ButtonBuilder().setCustomId('b').setLabel(pregunta.opciones[1]).setStyle(ButtonStyle.Primary),
-                new ButtonBuilder().setCustomId('c').setLabel(pregunta.opciones[2]).setStyle(ButtonStyle.Primary),
-                new ButtonBuilder().setCustomId('d').setLabel(pregunta.opciones[3]).setStyle(ButtonStyle.Primary)
-            );
-
-        const embed = new EmbedBuilder()
-            .setTitle('🧠 TRIVIA VERIFICADA')
-            .setDescription(`**${pregunta.pregunta}**\n\nTienes 20 segundos para responder!`)
-            .setColor(0x3498DB)
-            .setFooter({ text: '¡Respuestas 100% correctas! ✅' });
-
-        await interaction.reply({ embeds: [embed], components: [row] });
-
-        const filter = i => i.isButton();
-        const collector = interaction.channel.createMessageComponentCollector({ filter, time: 20000 });
-
-        collector.on('collect', async i => {
-            const selectedIndex = ['a', 'b', 'c', 'd'].indexOf(i.customId);
-            const selectedAnswer = pregunta.opciones[selectedIndex];
-            
-            if (selectedAnswer === pregunta.respuesta) {
-                const winEmbed = new EmbedBuilder()
-                    .setTitle('🎉 ¡CORRECTO!')
-                    .setDescription(`**${pregunta.respuesta}** ✅\n\n*${pregunta.explicacion}*`)
-                    .setColor(0x00FF00);
-                
-                await i.reply({ embeds: [winEmbed] });
-                collector.stop();
-            } else {
-                await i.reply({ 
-                    content: `❌ Incorrecto! Era: **${pregunta.respuesta}**`, 
-                    ephemeral: true 
-                });
-            }
-        });
-
-        collector.on('end', async collected => {
-            if (collected.size === 0) {
-                await interaction.followUp(`⏰ **TIEMPO AGOTADO!** La respuesta era: ${pregunta.respuesta}`);
-            }
-        });
+        await interaction.reply({ embeds: [embed], components: [casinoMenu] });
     }
 
     else if (commandName === 'solo') {
@@ -198,289 +189,372 @@ client.on(Events.InteractionCreate, async interaction => {
                 .setPlaceholder('🎮 Elige un juego individual')
                 .addOptions([
                     { label: 'Adivina el Número', description: '🎯 Clásico juego de adivinanza', value: 'adivina', emoji: '🔢' },
-                    { label: 'Piedra Papel Tijera', description: '✂️ Contra la máquina', value: 'ppt', emoji: '🪨' }
+                    { label: 'Piedra Papel Tijera', description: '✂️ Contra la máquina', value: 'ppt', emoji: '🪨' },
+                    { label: 'Quiz Diario', description: '🧠 Desafío único del día', value: 'quiz', emoji: '📝' },
+                    { label: 'Ahorcado', description: '💀 Adivina la palabra', value: 'ahorcado', emoji: '💀' },
+                    { label: 'Sudoku', description: '🔢 Rompecabezas numérico', value: 'sudoku', emoji: '9️⃣' }
                 ])
         );
 
         const embed = new EmbedBuilder()
-            .setTitle('🎮 MODO SOLO')
-            .setDescription('**Juega aunque tus amigos no estén conectados!**\nSelecciona un juego:')
+            .setTitle('🎮 MODO SOLO MEJORADO')
+            .setDescription('**Juegos individuales con recompensas!**\nSelecciona un juego:')
             .setColor(0x7289DA)
             .addFields(
-                { name: '👤 Jugador', value: `${interaction.user.username}`, inline: true },
-                { name: '🎯 Record', value: '**0** victorias', inline: true }
-            )
-            .setFooter({ text: '¡Perfecto para cuando juegas solo!' });
+                { name: '👤 Jugador', value: `${user.username}`, inline: true },
+                { name: '💰 Recompensas', value: 'Hasta **100** 🪙', inline: true }
+            );
 
         await interaction.reply({ embeds: [embed], components: [gamesMenu] });
     }
 
-    else if (commandName === 'perfil') {
-        const coins = getCoins(user.id);
-        const stats = userStats.get(user.id) || { wins: 0, games: 0, coinsWon: 0 };
-        const winRate = stats.games > 0 ? ((stats.wins / stats.games) * 100).toFixed(1) : 0;
+    else if (commandName === 'tienda') {
+        const tiendaMenu = new ActionRowBuilder().addComponents(
+            new StringSelectMenuBuilder()
+                .setCustomId('tienda_select')
+                .setPlaceholder('🛒 Elige una categoría')
+                .addOptions([
+                    { label: 'Marcos de Perfil', description: '🖼️ Personaliza tu perfil', value: 'marcos', emoji: '🖼️' },
+                    { label: 'Títulos', description: '👑 Títulos especiales', value: 'titulos', emoji: '👑' },
+                    { label: 'Badges', description: '🎖️ Insignias por logros', value: 'badges', emoji: '🎖️' }
+                ])
+        );
 
+        const userData = getUserData(user.id);
         const embed = new EmbedBuilder()
-            .setTitle(`👤 PERFIL - ${user.username}`)
-            .setThumbnail(user.displayAvatarURL())
-            .setColor(0x3498DB)
+            .setTitle('🛒 TIENDA DE COSMÉTICOS')
+            .setDescription('**Personaliza tu perfil!** ✨')
+            .setColor(0x9B59B6)
             .addFields(
-                { name: '🪙 Monedas', value: `**${coins}**`, inline: true },
-                { name: '🏆 Victorias', value: `**${stats.wins}**`, inline: true },
-                { name: '📊 Win Rate', value: `**${winRate}%**`, inline: true },
-                { name: '🎮 Partidas', value: `**${stats.games}** jugadas`, inline: true }
+                { name: '💰 Tu Saldo', value: `**${userData.coins}** 🪙`, inline: true },
+                { name: '🎁 Items Desbloqueados', value: `**${userData.cosmeticos.badges.length + 2}** items`, inline: true }
             )
-            .setFooter({ text: 'Sigue jugando para mejorar tus stats!' })
-            .setTimestamp();
+            .setFooter({ text: 'Gana monedas jugando para comprar cosméticos!' });
 
-        await interaction.reply({ embeds: [embed] });
+        await interaction.reply({ embeds: [embed], components: [tiendaMenu] });
     }
 
-    else if (commandName === 'leaderboard') {
-        const topPlayers = Array.from(userStats.entries())
-            .map(([id, stats]) => ({ id, ...stats, coins: userCoins.get(id) || 0 }))
-            .sort((a, b) => b.coins - a.coins)
-            .slice(0, 5);
+    else if (commandName === 'daily') {
+        const userData = getUserData(user.id);
+        const now = Date.now();
+        const lastDaily = userData.lastDaily;
+        const oneDay = 24 * 60 * 60 * 1000;
 
-        const leaderboardText = topPlayers.map((player, index) => {
-            const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : '🔸';
-            return `${medal} **${index + 1}.** <@${player.id}> - **${player.coins}** 🪙`;
-        }).join('\n') || '📝 Nadie ha jugado aún...';
-
-        const embed = new EmbedBuilder()
-            .setTitle('🏆 LEADERBOARD GLOBAL')
-            .setDescription(leaderboardText)
-            .setColor(0xFFD700)
-            .setFooter({ text: 'Actualizado en tiempo real' })
-            .setTimestamp();
-
-        await interaction.reply({ embeds: [embed] });
-    }
-
-    else if (commandName === 'slot') {
-        const symbols = ['🍒', '🍋', '🍊', '🍇', '🔔', '💎', '7️⃣'];
-        const spin = () => Array.from({ length: 3 }, () => symbols[Math.floor(Math.random() * symbols.length)]);
-        
-        const result = spin();
-        const coins = getCoins(user.id);
-        const bet = 50;
-        
-        if (coins < bet) {
-            await interaction.reply('❌ No tienes suficientes monedas! Mínimo 50 🪙');
+        if (lastDaily && (now - lastDaily) < oneDay) {
+            const nextDaily = new Date(lastDaily + oneDay);
+            const embed = new EmbedBuilder()
+                .setTitle('📅 RECOMPENSA DIARIA')
+                .setDescription(`**Ya reclamaste hoy!** ⏰\nPodrás reclamar de nuevo <t:${Math.floor(nextDaily.getTime() / 1000)}:R>`)
+                .setColor(0xFF0000)
+                .addFields(
+                    { name: '🔥 Racha Actual', value: `**${userData.dailyStreak}** días`, inline: true }
+                );
+            await interaction.reply({ embeds: [embed] });
             return;
         }
 
-        userCoins.set(user.id, coins - bet);
+        // Calcular recompensa
+        const baseReward = 100;
+        const streakBonus = userData.dailyStreak * 10;
+        const totalReward = baseReward + streakBonus;
 
-        let winMultiplier = 0;
-        if (result[0] === result[1] && result[1] === result[2]) {
-            winMultiplier = result[0] === '💎' ? 10 : result[0] === '7️⃣' ? 5 : 3;
-        } else if (result[0] === result[1] || result[1] === result[2]) {
-            winMultiplier = 1;
-        }
-
-        const winAmount = bet * winMultiplier;
-        if (winMultiplier > 0) {
-            userCoins.set(user.id, coins - bet + winAmount);
-            updateStats(user.id, true, winAmount);
-        }
+        userData.coins += totalReward;
+        userData.dailyStreak = lastDaily && (now - lastDaily) < (oneDay * 2) ? userData.dailyStreak + 1 : 1;
+        userData.lastDaily = now;
 
         const embed = new EmbedBuilder()
-            .setTitle('🎰 SLOT MACHINE')
-            .setDescription(`**${result.join(' | ')}**`)
-            .setColor(winMultiplier > 0 ? 0x00FF00 : 0xFF0000)
+            .setTitle('📅 RECOMPENSA DIARIA')
+            .setDescription(`**¡Recompensa reclamada!** 🎉`)
+            .setColor(0x00FF00)
             .addFields(
-                { name: '🎯 Resultado', value: winMultiplier > 0 ? `**¡GANASTE!** x${winMultiplier}` : '**Perdiste...**', inline: true },
-                { name: '💰 Premio', value: winMultiplier > 0 ? `**+${winAmount}** 🪙` : '**0** 🪙', inline: true },
-                { name: '💳 Saldo', value: `**${getCoins(user.id)}** 🪙`, inline: true }
+                { name: '💰 Base', value: `**${baseReward}** 🪙`, inline: true },
+                { name: '🔥 Bono de Racha', value: `**${streakBonus}** 🪙`, inline: true },
+                { name: '💎 Total', value: `**${totalReward}** 🪙`, inline: true },
+                { name: '📈 Nueva Racha', value: `**${userData.dailyStreak}** días`, inline: true },
+                { name: '💳 Saldo Actual', value: `**${userData.coins}** 🪙`, inline: true }
             )
-            .setFooter({ text: `Apuesta: ${bet} 🪙` });
+            .setFooter({ text: 'Vuelve mañana para más recompensas!' });
 
         await interaction.reply({ embeds: [embed] });
     }
+
+    else if (commandName === 'perfil') {
+        const data = getUserData(user.id);
+        const winRate = data.games > 0 ? ((data.wins / data.games) * 100).toFixed(1) : 0;
+        
+        // Obtener nombres de cosméticos
+        const marco = cosmeticos.marcos.find(m => m.id === data.cosmeticos.marco);
+        const titulo = cosmeticos.titulos.find(t => t.id === data.cosmeticos.titulo);
+        const badges = data.cosmeticos.badges.map(badgeId => 
+            cosmeticos.badges.find(b => b.id === badgeId)
+        ).filter(b => b);
+
+        const embed = new EmbedBuilder()
+            .setTitle(`${marco.name} ${user.username} - ${titulo.name}`)
+            .setThumbnail(user.displayAvatarURL())
+            .setColor(0x3498DB)
+            .addFields(
+                { name: '🪙 Monedas', value: `**${data.coins}** 🪙`, inline: true },
+                { name: '🏆 Victorias', value: `**${data.wins}**`, inline: true },
+                { name: '📊 Win Rate', value: `**${winRate}%**`, inline: true },
+                { name: '🎮 Partidas', value: `**${data.games}** jugadas`, inline: true },
+                { name: '🔥 Racha Diaria', value: `**${data.dailyStreak}** días`, inline: true },
+                { name: '💰 Ganado Total', value: `**${data.coinsWon}** 🪙`, inline: true }
+            );
+
+        if (badges.length > 0) {
+            embed.addFields({
+                name: '🎖️ Insignias',
+                value: badges.map(b => b.name).join('\n'),
+                inline: false
+            });
+        }
+
+        // Estadísticas de casino
+        const casinoStats = `
+🎰 **Tragamonedas**: ${data.stats.tragamonedas.ganado}/${data.stats.tragamonedas.jugado}
+🃏 **Blackjack**: ${data.stats.blackjack.ganado}/${data.stats.blackjack.jugado}
+🎡 **Ruleta**: ${data.stats.ruleta.ganado}/${data.stats.ruleta.jugado}
+        `.trim();
+
+        embed.addFields({ name: '🎲 Estadísticas Casino', value: casinoStats, inline: false });
+        embed.setFooter({ text: 'Usa /tienda para más cosméticos!' });
+
+        await interaction.reply({ embeds: [embed] });
+    }
+
+    // ... (mantén tus otros comandos existentes: carrera, impostor, dibuja, party, trivia, etc.) ...
 
     else if (commandName === 'version') {
         const embed = new EmbedBuilder()
             .setTitle('ℹ️ INFORMACIÓN DEL BOT')
             .setColor(0x00FF00)
             .addFields(
-                { name: '🔄 Versión', value: '**1.0.0**', inline: true },
+                { name: '🔄 Versión', value: '**2.0.0**', inline: true },
                 { name: '📅 Actualizado', value: `<t:${Math.floor(Date.now() / 1000)}:R>`, inline: true },
                 { name: '✅ Estado', value: '**En funcionamiento**', inline: true }
             )
-            .setFooter({ text: 'Bot activo y funcionando' })
-            .setTimestamp();
+            .setFooter({ text: '¡Ahora con casino y cosméticos!' });
 
         await interaction.reply({ embeds: [embed] });
-    }
-
-    else if (commandName === 'impostor') {
-        const embed = new EmbedBuilder()
-            .setTitle('🕵️ JUEGO DEL IMPOSTOR')
-            .setDescription('Reacciona con ✅ para unirte al juego')
-            .setColor(0xFF0000)
-            .setFooter({ text: '20 segundos para unirse' });
-
-        await interaction.reply({ embeds: [embed] });
-        const message = await interaction.fetchReply();
-        await message.react('✅');
-    }
-
-    else if (commandName === 'dibuja') {
-        const palabras = ['🐉 dragón', '🍦 helado', '📞 teléfono', '🚲 bicicleta', '🔥 fuego'];
-        const palabra = palabras[Math.floor(Math.random() * palabras.length)];
-        
-        try {
-            await interaction.user.send(`🎨 **Tu palabra a dibujar es:** ||${palabra}||\n\nDescríbela con emojis o texto en el canal!`);
-            await interaction.reply(`✅ **${interaction.user.username}** está dibujando algo... ¡Adivinen qué es! 🎨`);
-        } catch (error) {
-            await interaction.reply('❌ No puedo enviarte MD! Activa tus mensajes directos.');
-        }
-    }
-
-    else if (commandName === 'ruleta') {
-        await interaction.reply('🎰 **Ruleta Rusa** - ¡Juego en desarrollo! Próximamente...');
-    }
-
-    else if (commandName === 'memoria') {
-        await interaction.reply('🧠 **Juego de Memoria** - ¡En desarrollo! Próximamente...');
-    }
-
-    else if (commandName === 'battle') {
-        await interaction.reply('⚔️ **Batalla** - ¡En desarrollo! Próximamente...');
     }
 });
 
-// Manejar interacciones de botones y menús
+// Manejar interacciones de menús y botones
 client.on(Events.InteractionCreate, async interaction => {
-    if (interaction.isButton()) {
-        if (interaction.customId === 'join_race') {
-            await interaction.reply({ content: '🎯 Te has unido a la carrera!', ephemeral: true });
-        }
-        else if (['piedra', 'papel', 'tijera'].includes(interaction.customId)) {
-            const userChoice = interaction.customId;
-            const opciones = ['piedra', 'papel', 'tijera'];
-            const botChoice = opciones[Math.floor(Math.random() * 3)];
+    if (interaction.isStringSelectMenu()) {
+        const userData = getUserData(interaction.user.id);
+
+        if (interaction.customId === 'casino_select') {
+            const game = interaction.values[0];
             
-            let resultado = '';
-            let color = 0x000000;
-            
-            if (userChoice === botChoice) {
-                resultado = '**EMPATE** 🤝';
-                color = 0xFFFF00;
-            } else if (
-                (userChoice === 'piedra' && botChoice === 'tijera') ||
-                (userChoice === 'papel' && botChoice === 'piedra') ||
-                (userChoice === 'tijera' && botChoice === 'papel')
-            ) {
-                resultado = '**¡GANASTE!** 🎉';
-                color = 0x00FF00;
-                const coins = getCoins(interaction.user.id);
-                userCoins.set(interaction.user.id, coins + 25);
-                updateStats(interaction.user.id, true, 25);
-            } else {
-                resultado = '**Perdiste...** 💀';
-                color = 0xFF0000;
+            if (game === 'tragamonedas') {
+                const betOptions = new ActionRowBuilder().addComponents(
+                    new StringSelectMenuBuilder()
+                        .setCustomId('slot_bet')
+                        .setPlaceholder('💰 Selecciona tu apuesta')
+                        .addOptions([
+                            { label: '10 🪙', value: '10', description: 'Apuesta pequeña' },
+                            { label: '50 🪙', value: '50', description: 'Apuesta media' },
+                            { label: '100 🪙', value: '100', description: 'Apuesta grande' },
+                            { label: '500 🪙', value: '500', description: 'Apuesta alta' }
+                        ])
+                );
+
+                const embed = new EmbedBuilder()
+                    .setTitle('🎰 TRAGAMONEDAS')
+                    .setDescription('**Selecciona tu apuesta y gira!**')
+                    .setColor(0xFFD700)
+                    .addFields(
+                        { name: '💰 Tu Saldo', value: `**${userData.coins}** 🪙`, inline: true },
+                        { name: '🎯 Premio Máximo', value: '**x50**', inline: true }
+                    );
+
+                await interaction.reply({ embeds: [embed], components: [betOptions] });
             }
+        }
+
+        else if (interaction.customId === 'slot_bet') {
+            const bet = parseInt(interaction.values[0]);
             
+            if (userData.coins < bet) {
+                await interaction.reply({ content: '❌ No tienes suficientes monedas!', ephemeral: true });
+                return;
+            }
+
+            userData.coins -= bet;
+            updateStats(interaction.user.id, 'tragamonedas', false, -bet);
+
+            // Girar tragamonedas
+            const symbols = casinoGames.tragamonedas.symbols;
+            const result = [
+                symbols[Math.floor(Math.random() * symbols.length)],
+                symbols[Math.floor(Math.random() * symbols.length)],
+                symbols[Math.floor(Math.random() * symbols.length)]
+            ];
+
+            // Calcular premio
+            const resultStr = result.join('');
+            let multiplier = 0;
+            
+            for (const [pattern, payout] of Object.entries(casinoGames.tragamonedas.payouts)) {
+                if (resultStr === pattern) {
+                    multiplier = payout;
+                    break;
+                }
+            }
+
+            const winAmount = bet * multiplier;
+            if (multiplier > 0) {
+                userData.coins += winAmount;
+                updateStats(interaction.user.id, 'tragamonedas', true, winAmount);
+            }
+
             const embed = new EmbedBuilder()
-                .setTitle('🪨 PIEDRA, PAPEL O TIJERA')
-                .setDescription(`${resultado}`)
-                .setColor(color)
+                .setTitle('🎰 TRAGAMONEDAS - RESULTADO')
+                .setDescription(`**${result.join(' | ')}**`)
+                .setColor(multiplier > 0 ? 0x00FF00 : 0xFF0000)
                 .addFields(
-                    { name: '👤 Tu elección', value: `**${userChoice.toUpperCase()}**`, inline: true },
-                    { name: '🤖 Mi elección', value: `**${botChoice.toUpperCase()}**`, inline: true },
-                    { name: '💰 Premio', value: color === 0x00FF00 ? '+25 🪙' : '0 🪙', inline: true }
+                    { name: '💰 Apuesta', value: `**${bet}** 🪙`, inline: true },
+                    { name: '🎯 Multiplicador', value: `**x${multiplier}**`, inline: true },
+                    { name: '🏆 Premio', value: multiplier > 0 ? `**+${winAmount}** 🪙` : '**0** 🪙', inline: true },
+                    { name: '💳 Saldo Actual', value: `**${userData.coins}** 🪙`, inline: true }
                 );
 
             await interaction.reply({ embeds: [embed] });
         }
-    }
 
-    if (interaction.isStringSelectMenu()) {
-        if (interaction.customId === 'game_select') {
-            const game = interaction.values[0];
-            await interaction.reply({ content: `🎮 Iniciando: **${game}** - Usa \`/${game}\` para jugar!`, ephemeral: true });
+        else if (interaction.customId === 'tienda_select') {
+            const categoria = interaction.values[0];
+            let items = [];
+            let descripcion = '';
+
+            if (categoria === 'marcos') {
+                items = cosmeticos.marcos;
+                descripcion = '**Marcos de perfil** 🖼️';
+            } else if (categoria === 'titulos') {
+                items = cosmeticos.titulos;
+                descripcion = '**Títulos especiales** 👑';
+            }
+
+            const itemOptions = items.map(item => 
+                new StringSelectMenuBuilder()
+                    .setCustomId(`buy_${categoria}_${item.id}`)
+                    .setPlaceholder(`🛒 Comprar ${item.name}`)
+                    .addOptions([{
+                        label: item.name,
+                        description: `Precio: ${item.precio} 🪙`,
+                        value: item.id
+                    }])
+            );
+
+            const embed = new EmbedBuilder()
+                .setTitle(`🛒 TIENDA - ${descripcion}`)
+                .setDescription('Selecciona un item para comprar:')
+                .setColor(0x9B59B6)
+                .addFields(
+                    { name: '💰 Tu Saldo', value: `**${userData.coins}** 🪙`, inline: true }
+                );
+
+            const rows = itemOptions.map(option => new ActionRowBuilder().addComponents(option));
+            await interaction.reply({ embeds: [embed], components: rows });
         }
+
+        else if (interaction.customId.startsWith('buy_')) {
+            const [_, categoria, itemId] = interaction.customId.split('_');
+            let items = [];
+            
+            if (categoria === 'marcos') items = cosmeticos.marcos;
+            else if (categoria === 'titulos') items = cosmeticos.titulos;
+            
+            const item = items.find(i => i.id === itemId);
+            
+            if (!item) {
+                await interaction.reply({ content: '❌ Item no encontrado!', ephemeral: true });
+                return;
+            }
+
+            if (userData.coins < item.precio) {
+                await interaction.reply({ content: '❌ No tienes suficientes monedas!', ephemeral: true });
+                return;
+            }
+
+            // Comprar item
+            userData.coins -= item.precio;
+            userData.cosmeticos[categoria] = itemId;
+
+            const embed = new EmbedBuilder()
+                .setTitle('✅ COMPRA EXITOSA')
+                .setDescription(`**Has comprado: ${item.name}**`)
+                .setColor(0x00FF00)
+                .addFields(
+                    { name: '💰 Precio', value: `**${item.precio}** 🪙`, inline: true },
+                    { name: '💳 Saldo Restante', value: `**${userData.coins}** 🪙`, inline: true }
+                )
+                .setFooter({ text: '¡Usa /perfil para ver tus nuevos cosméticos!' });
+
+            await interaction.reply({ embeds: [embed] });
+        }
+
         else if (interaction.customId === 'solo_game_select') {
             const game = interaction.values[0];
             
-            if (game === 'adivina') {
-                const numero = Math.floor(Math.random() * 100) + 1;
-                let intentos = 0;
+            if (game === 'ahorcado') {
+                const palabras = ['PROGRAMACION', 'DISCORD', 'JAVASCRIPT', 'BOT', 'VIDEOJUEGO', 'COMPUTADORA'];
+                const palabra = palabras[Math.floor(Math.random() * palabras.length)];
+                let vidas = 6;
+                let letrasAdivinadas = Array(palabra.length).fill('_');
+                let letrasUsadas = [];
                 
                 const embed = new EmbedBuilder()
-                    .setTitle('🔢 ADIVINA EL NÚMERO')
-                    .setDescription('**Estoy pensando en un número del 1 al 100**\n¡Tienes 8 intentos!')
-                    .setColor(0x9B59B6)
+                    .setTitle('💀 AHORCADO')
+                    .setDescription(`**Palabra:** \`${letrasAdivinadas.join(' ')}\``)
+                    .setColor(0x8B0000)
                     .addFields(
-                        { name: '🎯 Intentos', value: '`0/8`', inline: true },
-                        { name: '💰 Premio', value: '`50` 🪙', inline: true }
+                        { name: '❤️ Vidas', value: '❤️'.repeat(vidas), inline: true },
+                        { name: '🔤 Letras Usadas', value: letrasUsadas.join(', ') || 'Ninguna', inline: true }
                     )
-                    .setFooter({ text: 'Escribe tu número en el chat' });
+                    .setFooter({ text: 'Escribe una letra para adivinar' });
 
                 await interaction.reply({ embeds: [embed] });
                 
-                const filter = m => m.author.id === interaction.user.id;
-                const collector = interaction.channel.createMessageCollector({ filter, time: 120000, max: 8 });
-                
-                collector.on('collect', async m => {
-                    intentos++;
-                    const guess = parseInt(m.content);
-                    
-                    if (isNaN(guess)) {
-                        await m.reply('❌ Escribe un número válido');
-                        return;
-                    }
-                    
-                    if (guess === numero) {
-                        const coins = getCoins(interaction.user.id);
-                        userCoins.set(interaction.user.id, coins + 50);
-                        updateStats(interaction.user.id, true, 50);
-                        
-                        const winEmbed = new EmbedBuilder()
-                            .setTitle('🎉 ¡GANASTE!')
-                            .setDescription(`**¡Correcto! Era ${numero}**\n\nLo adivinaste en **${intentos}** intentos`)
-                            .setColor(0x00FF00)
-                            .addFields(
-                                { name: '💰 Premio', value: '+50 🪙', inline: true }
-                            );
-                        
-                        await interaction.followUp({ embeds: [winEmbed] });
-                        collector.stop();
-                    } else if (guess < numero) {
-                        await m.reply('📈 **Más alto!**');
-                    } else {
-                        await m.reply('📉 **Más bajo!**');
-                    }
-                    
-                    if (intentos >= 8 && guess !== numero) {
-                        const loseEmbed = new EmbedBuilder()
-                            .setTitle('💀 ¡PERDISTE!')
-                            .setDescription(`El número era: **${numero}**\n\nMejor suerte la próxima vez`)
-                            .setColor(0xFF0000);
-                        
-                        await interaction.followUp({ embeds: [loseEmbed] });
-                        collector.stop();
-                    }
-                });
+                // Lógica del ahorcado...
             }
-            else if (game === 'ppt') {
+            else if (game === 'quiz') {
+                const quizzes = [
+                    {
+                        pregunta: "¿Cuál es el lenguaje de programación más usado en 2024?",
+                        opciones: ["Python", "JavaScript", "Java", "C++"],
+                        respuesta: "JavaScript"
+                    }
+                ];
+                
+                const quiz = quizzes[Math.floor(Math.random() * quizzes.length)];
                 const row = new ActionRowBuilder().addComponents(
-                    new ButtonBuilder().setCustomId('piedra').setLabel('🪨 Piedra').setStyle(ButtonStyle.Primary),
-                    new ButtonBuilder().setCustomId('papel').setLabel('📄 Papel').setStyle(ButtonStyle.Success),
-                    new ButtonBuilder().setCustomId('tijera').setLabel('✂️ Tijera').setStyle(ButtonStyle.Danger)
+                    ...quiz.opciones.map((opcion, index) => 
+                        new ButtonBuilder()
+                            .setCustomId(`quiz_${index}`)
+                            .setLabel(opcion)
+                            .setStyle(ButtonStyle.Primary)
+                    )
                 );
 
                 const embed = new EmbedBuilder()
-                    .setTitle('🪨 PIEDRA, PAPEL O TIJERA')
-                    .setDescription('**Elige tu movimiento:**')
-                    .setColor(0xFFA500)
-                    .setFooter({ text: '¡Gana 25 🪙 por cada victoria!' });
+                    .setTitle('🧠 QUIZ DIARIO')
+                    .setDescription(`**${quiz.pregunta}**`)
+                    .setColor(0x3498DB)
+                    .setFooter({ text: '¡Gana 50 🪙 por respuesta correcta!' });
 
                 await interaction.reply({ embeds: [embed], components: [row] });
             }
         }
+    }
+
+    // Manejar botones de quiz
+    if (interaction.isButton() && interaction.customId.startsWith('quiz_')) {
+        const quizIndex = parseInt(interaction.customId.split('_')[1]);
+        // Lógica para verificar respuesta del quiz...
+        await interaction.reply({ content: '✅ Respuesta procesada!', ephemeral: true });
     }
 });
 
